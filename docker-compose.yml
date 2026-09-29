@@ -1,11 +1,8 @@
-version: '3.8'
-
 services:
 
     zoo:
-        image: confluentinc/cp-zookeeper:latest
+        image: confluentinc/cp-zookeeper:7.9.5
         hostname: zoo
-        container_name: zoo
         ports:
             - "2181:2181"
         environment:
@@ -16,9 +13,8 @@ services:
             - zookeeper-data:/var/lib/zookeeper/data
 
     kafka:
-        image: confluentinc/cp-kafka:latest
+        image: confluentinc/cp-kafka:7.9.5
         hostname: kafka
-        container_name: kafka
         ports:
             - "9092:9092"
             - "9999:9999"
@@ -41,20 +37,21 @@ services:
             - zoo
 
     keycloak:
-        image: quay.io/keycloak/keycloak:22.0.5
+        image: quay.io/keycloak/keycloak:26.7.4
         hostname: keycloak
-        container_name: keycloak
         command: ["start-dev"]
         ports:
             - "8080:8080"
         depends_on:
-            - kafka
-            - postgres
+            kafka:
+                condition: service_started
+            postgres:
+                condition: service_healthy
         volumes:
             - ./target/keycloakplugin-1.0-SNAPSHOT-jar-with-dependencies.jar:/opt/keycloak/providers/keycloakplugin-1.0-SNAPSHOT-jar-with-dependencies.jar
         environment:
-            KEYCLOAK_ADMIN: admin
-            KEYCLOAK_ADMIN_PASSWORD: admin
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: admin
             KAFKA_TOPIC: keycloak-events
             KAFKA_CLIENT_ID: my-kafka-client
             KAFKA_BOOTSTRAP_SERVERS: kafka:19092
@@ -64,15 +61,17 @@ services:
             KC_DB_PASSWORD: secret
     postgres:
         image: postgres:16.0
-        container_name: postgres
         volumes:
             - postgres_data:/var/lib/postgresql/data
         environment:
             POSTGRES_DB: keycloak
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: secret
-        ports:
-            - "5432:5432"
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d keycloak"]
+            interval: 5s
+            timeout: 3s
+            retries: 12
 
 
 volumes:
