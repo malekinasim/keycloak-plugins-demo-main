@@ -1,5 +1,6 @@
 package com.keyclock.spi;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.authentication.Authenticator;
@@ -17,7 +18,7 @@ import java.util.Objects;
 public class OTPAuthenticatorFactory implements AuthenticatorFactory {
 
 	private static final Logger LOG = Logger.getLogger(OTPAuthenticatorFactory.class);
-
+	private static final String BOOTSTRAP_SERVERS_ENV = "KAFKA_BOOTSTRAP_SERVERS";
 
 	@Override
 	public String getId() {
@@ -77,7 +78,7 @@ public class OTPAuthenticatorFactory implements AuthenticatorFactory {
 	@Override
 	public void init(Config.Scope config) {
 		LOG.info("authenticator init");
-		var bootstrapServers = config.get("bootstrapServers", System.getenv("KAFKA_BOOTSTRAP_SERVERS"));
+		var bootstrapServers = config.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, System.getenv(BOOTSTRAP_SERVERS_ENV));
 		Objects.requireNonNull(bootstrapServers, "bootstrapServers must not be null");
 		var kafkaProperties = KafkaConfig.init(config);
 		this.kafkaEventProducer = new KafkaEventProducer(bootstrapServers,kafkaProperties);

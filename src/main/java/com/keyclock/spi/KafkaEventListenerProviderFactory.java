@@ -1,5 +1,6 @@
 package com.keyclock.spi;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.jboss.logging.Logger;
 import org.keycloak.Config.Scope;
 import org.keycloak.events.EventListenerProvider;
@@ -17,11 +18,15 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
 
     private static final Logger LOG = Logger.getLogger(KafkaEventListenerProviderFactory.class);
     private static final String ID = "kafka";
+    private static final String EVENTS_KEY = "events";
+
+    private static final String BOOTSTRAP_SERVERS_ENV = "KAFKA_BOOTSTRAP_SERVERS";
+    private static final String EVENTS_ENV = "KAFKA_EVENTS";
 
     private KafkaEventListenerProvider instance;
 
     private String bootstrapServers;
-    private String[] events;
+    private List<EventType> events;
     private Map<String, Object> kafkaProperties;
 
     @Override
@@ -30,7 +35,10 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
         if (instance == null) {
             instance = new KafkaEventListenerProvider(
                     new KafkaEventProducer(bootstrapServers, kafkaProperties),
-                    new KafkaEventConsumer(bootstrapServers, kafkaProperties, List.of("policy-enforcer")));
+                    new KafkaEventConsumer(bootstrapServers, kafkaProperties,
+                            List.of(KafkaTopic.POLICY_ENFORCER.topicName())),
+                  events
+            );
         }
 
         return instance;
@@ -44,20 +52,18 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
     @Override
     public void init(Scope config) {
         LOG.info("Init kafka module ...");
-        bootstrapServers = config.get("bootstrapServers", System.getenv("KAFKA_BOOTSTRAP_SERVERS"));
+        bootstrapServers = config.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, System.getenv(BOOTSTRAP_SERVERS_ENV));
 		// if you want to listen to specific events passed in the config. pass this provider constructor otherwise listen to all events
-        String eventsString = config.get("events", System.getenv("KAFKA_EVENTS"));
-
-        if (eventsString != null) {
-            events = eventsString.split(",");
-        }
 
 		Objects.requireNonNull(bootstrapServers, "bootstrapServers must not be null");
 
-        if (events == null || events.length == 0) {
-            events = Arrays.stream(EventType.values())
-                    .map(Enum::name)
-                    .toArray(String[]::new);
+        String eventsString = config.get(EVENTS_KEY, System.getenv(EVENTS_ENV));
+
+        if (eventsString != null && !eventsString.isBlank()) {
+            events = Arrays.stream(eventsString.split(","))
+                    .map(String::trim)
+                    .map(EventType::valueOf)
+                    .toList();
         }
 
         kafkaProperties = KafkaConfig.init(config);
@@ -70,8 +76,9 @@ public class KafkaEventListenerProviderFactory implements EventListenerProviderF
 
     @Override
     public void close() {
-        // ignore
-        LOG.info("close, shutting down kafka consumer");
-        instance.shutDownConsumer();
+        if (instance != null) {
+            LOG.info("Shutting down Kafka consumer");
+            instance.shutDownConsumer();
+        }
     }
 }

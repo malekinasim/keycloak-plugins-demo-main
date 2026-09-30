@@ -41,7 +41,7 @@ public class OTPAuthenticator implements Authenticator {
 		authSession.setAuthNote("ttl", Long.toString(System.currentTimeMillis() + (ttl * 1000L)));
 
 		try {
-			eventProducer.publishEvent("sending code: %s to user: %s".formatted(code,mobileNumber),"otp-topic");
+			eventProducer.publishEvent("sending code: %s to user: %s".formatted(code,mobileNumber), KafkaTopic.OTP.topicName());
 			context.challenge(context.form().setAttribute("realm", context.getRealm()).createForm(TPL_CODE));
 		} catch (Exception e) {
 			logger.error(e.getMessage());

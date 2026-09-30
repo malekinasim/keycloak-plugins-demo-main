@@ -7,7 +7,6 @@ import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -24,11 +23,17 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
     private final KafkaEventConsumer kafkaEventConsumer;
     private final ObjectMapper mapper;
 
-    public KafkaEventListenerProvider(KafkaEventProducer kafkaEventProducer, KafkaEventConsumer kafkaEventConsumer) {
+    public KafkaEventListenerProvider(KafkaEventProducer kafkaEventProducer,
+                                      KafkaEventConsumer kafkaEventConsumer,
+                                      List<EventType> events) {
         LOG.debug("starting listener provider");
 		// if you want to listen to all events. otherwise get events in constructor
-        this.events = Arrays.stream(EventType.values())
-                .collect(Collectors.toList());
+        if(events==null ||events.isEmpty()) {
+            this.events = Arrays.stream(EventType.values())
+                    .collect(Collectors.toList());
+        }else{
+            this.events=events;
+        }
 
         mapper = new ObjectMapper();
         this.kafkaEventProducer = kafkaEventProducer;
@@ -38,45 +43,39 @@ public class KafkaEventListenerProvider implements EventListenerProvider {
     }
 
 
+
     @Override
     public void onEvent(Event event) {
-        String topicEvents = "keycloakEvents";
-        LOG.info("onEvent for user event on topic " + topicEvents);
         if (events.contains(event.getType())) {
-            try {
-                LOG.info("sending user event ");
-                kafkaEventProducer.publishEvent(mapper.writeValueAsString(event), topicEvents);
-            } catch (JsonProcessingException | ExecutionException | TimeoutException e) {
-                LOG.error(e.getMessage(), e);
-            } catch (InterruptedException e) {
-                LOG.error(e.getMessage(), e);
-                Thread.currentThread().interrupt();
-            }
+            publish(event,KafkaTopic.USER_EVENTS.topicName());
         }
     }
 
     @Override
     public void onEvent(AdminEvent event, boolean includeRepresentation) {
-        String topicAdminEvents = "keycloakAdminEvents";
-        LOG.info("onEvent for admin event on topic " + topicAdminEvents);
-        try {
-            LOG.info("sending admin event ");
-            kafkaEventProducer.publishEvent(mapper.writeValueAsString(event), topicAdminEvents);
-        } catch (JsonProcessingException | ExecutionException | TimeoutException e) {
-            LOG.error(e.getMessage(), e);
-        } catch (InterruptedException e) {
-            LOG.error(e.getMessage(), e);
-            Thread.currentThread().interrupt();
-        }
+        publish(event, KafkaTopic.ADMIN_EVENTS.topicName());
     }
 
+    private void publish(Object event, String topic) {
+        try {
+            String json = mapper.writeValueAsString(event);
+            kafkaEventProducer.publishEvent(json, topic);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Interrupted while publishing to " + topic, e);
+        } catch (JsonProcessingException | ExecutionException | TimeoutException e) {
+            LOG.error("Could not publish to " + topic, e);
+        }
+    }
     @Override
     public void close() {
         // ignore
     }
 
     public void shutDownConsumer() {
-        LOG.info("shutting down the consumer");
-        kafkaEventConsumer.shutDown();
+        if (kafkaEventConsumer != null) {
+            LOG.info("shutting down the consumer");
+            kafkaEventConsumer.shutDown();
+        }
     }
 }

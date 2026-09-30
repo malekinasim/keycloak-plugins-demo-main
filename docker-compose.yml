@@ -10,7 +10,7 @@ services:
             ZOOKEEPER_SERVER_ID: 1
             ZOOKEEPER_SERVERS: zoo:2888:3888
         volumes:
-            - zookeeper-data:/var/lib/zookeeper/data
+            - zookeeper-data-fresh:/var/lib/zookeeper/data
 
     kafka:
         image: confluentinc/cp-kafka:7.9.5
@@ -30,9 +30,8 @@ services:
             KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
             KAFKA_JMX_PORT: 9999
             KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
-            KAFKA_CREATE_TOPICS: "keycloak-events:1:1"
         volumes:
-            - kafka-data:/var/lib/kafka/data
+            - kafka-data-fresh:/var/lib/kafka/data
         depends_on:
             - zoo
 
@@ -52,16 +51,14 @@ services:
         environment:
             KC_BOOTSTRAP_ADMIN_USERNAME: admin
             KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-            KAFKA_TOPIC: keycloak-events
-            KAFKA_CLIENT_ID: my-kafka-client
             KAFKA_BOOTSTRAP_SERVERS: kafka:19092
             KC_DB: postgres
-            KC_DB_URL: jdbc:postgresql://postgres/keycloak
+            KC_DB_URL: jdbc:postgresql://postgres-keycloak/keycloak
             KC_DB_USERNAME: postgres
             KC_DB_PASSWORD: secret
     postgres:
         image: postgres:16.0
-        container_name: postgres
+        container_name: postgres-keycloak
         volumes:
             - postgres_data:/var/lib/postgresql/data
         environment:
@@ -78,6 +75,6 @@ services:
 
 
 volumes:
-    kafka-data:
-    zookeeper-data:
+    zookeeper-data-fresh:
+    kafka-data-fresh:
     postgres_data:
