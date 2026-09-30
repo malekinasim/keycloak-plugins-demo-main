@@ -8,16 +8,15 @@ import org.keycloak.Config.Scope;
 public class KafkaConfig {
 	public static Map<String, Object> init(Scope scope) {
 		Map<String, Object> propertyMap = new HashMap<>();
-		KafkaProperty[] producerProperties = KafkaProperty.values();
+		for (KafkaProperty property : KafkaProperty.values()) {
+			String key = property.getName();
+			String fallback = System.getenv("KAFKA_" + property.name());
+			String value = scope.get(key, fallback);
 
-		for (KafkaProperty property : producerProperties) {
-			String propertyEnv = System.getenv("KAFKA_" + property.name());
-
-			if (property.getName() != null && scope.get(property.getName(), propertyEnv) != null) {
-				propertyMap.put(property.getName(), scope.get(property.getName(), propertyEnv));
+			if (value != null) {
+				propertyMap.put(key, value);
 			}
 		}
-
 		return propertyMap;
 	}
 

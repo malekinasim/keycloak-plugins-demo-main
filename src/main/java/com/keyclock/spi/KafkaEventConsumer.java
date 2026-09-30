@@ -33,20 +33,23 @@ public class KafkaEventConsumer implements Runnable {
 
 	@Override
 	public void run() {
-		consumer.subscribe(topics);
 		try {
+			consumer.subscribe(topics);
+
 			while (true) {
-				ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+				ConsumerRecords<String, String> records =
+						consumer.poll(Duration.ofMillis(100));
+
 				for (ConsumerRecord<String, String> record : records) {
-					// do logic based on record.topic()
-					LOG.info("message received: " + record.value());
+					LOG.info("message received from topic: " + record.topic());
+					// پردازش پیام بعداً اینجا قرار می‌گیرد
 				}
 			}
 		} catch (WakeupException e) {
-			LOG.info("shut down signal received");
+			LOG.info("Kafka consumer received shutdown signal");
 		} finally {
-			LOG.info("consumer closed finally");
 			consumer.close();
+			LOG.info("Kafka consumer closed");
 		}
 	}
 
