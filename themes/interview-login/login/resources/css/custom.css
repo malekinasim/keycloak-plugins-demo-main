@@ -1,0 +1,12 @@
+.login-pf body {
+    background: #eaf2f8 none;
+}
+
+.login-pf .card-pf {
+    border-top: 4px solid #2563eb;
+}
+
+.login-pf .btn-primary {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}

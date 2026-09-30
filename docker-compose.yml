@@ -48,6 +48,7 @@ services:
                 condition: service_healthy
         volumes:
             - ./target/keycloakplugin-1.0-SNAPSHOT-jar-with-dependencies.jar:/opt/keycloak/providers/keycloakplugin-1.0-SNAPSHOT-jar-with-dependencies.jar
+            - ./themes/interview-login:/opt/keycloak/themes/interview-login:ro
         environment:
             KC_BOOTSTRAP_ADMIN_USERNAME: admin
             KC_BOOTSTRAP_ADMIN_PASSWORD: admin
